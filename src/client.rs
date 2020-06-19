@@ -43,6 +43,7 @@ impl Clone for YouTrack {
 }
 
 new_type!(GetQueryBuilder);
+new_type!(PostQueryBuilder);
 
 new_type!(CustomQuery);
 
@@ -110,9 +111,36 @@ impl YouTrack {
         &self.core
     }
 
-    /// Begin building up a GET request to GitHub
+    /// Begin building up a GET request to YouTrack
     pub fn get(&self) -> GetQueryBuilder {
         self.into()
+    }
+
+    /// Begin building up a POST request with data to YouTrack
+
+    pub fn post<T>(&self, body: T) -> PostQueryBuilder
+    where
+        T: Serialize,
+    {
+        let mut qb: PostQueryBuilder = self.into();
+
+        if let Ok(mut qbr) = qb.request {
+            let serialized = serde_json::to_vec(&body);
+
+            match serialized {
+                Ok(json) => {
+                    *qbr.get_mut().body_mut() = json.into();
+
+                    qb.request = Ok(qbr);
+                }
+
+                Err(_) => {
+                    qb.request = Err("Unable to serialize data to JSON".into());
+                }
+            }
+        }
+
+        qb
     }
 }
 
@@ -121,16 +149,25 @@ impl<'g> GetQueryBuilder<'g> {
     func_client!(issues, issues::get::Issues<'g>);
 }
 
+impl<'g> PostQueryBuilder<'g> {
+    func_client!(custom_endpoint, CustomQuery, endpoint_str);
+    func_client!(issues, issues::post::Issues<'g>);
+}
+
 // From derivations of Github to the given type using a certain
 // request method
 from!(
     @GetQueryBuilder
         => "GET"
+    @PostQueryBuilder
+        => "POST"
 );
 
 // Custom Url based from impls
 from!(
     @GetQueryBuilder
+       => CustomQuery
+   @PostQueryBuilder
        => CustomQuery
 );
 

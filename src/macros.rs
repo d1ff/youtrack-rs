@@ -171,7 +171,7 @@ macro_rules! new_type {
         $(
         pub struct $i<'g> {
             pub(crate) request: Result<RefCell<Request<Body>>>,
-            pub(crate) core: &'g Rc<RefCell<Core>>,
+            pub(crate) core: &'g Rc<RefCell<Runtime>>,
             pub(crate) client: &'g Rc<Client<HttpsConnector>>,
             pub(crate) parameter: Option<String>,
         }
@@ -196,23 +196,26 @@ macro_rules! exec {
             {
                 let mut core_ref = self.core.try_borrow_mut()?;
                 let client = self.client;
-                let work = client.request(self.request?.into_inner()).and_then(|res| {
-                    let header = res.headers().clone();
-                    let status = res.status();
-                    res.into_body()
-                        .fold(Vec::new(), |mut v, chunk| {
-                            v.extend(&chunk[..]);
-                            ok::<_, hyper::Error>(v)
-                        })
-                        .map(move |chunks| {
-                            if chunks.is_empty() {
-                                Ok((header, status, None))
-                            } else {
-                                Ok((header, status, Some(serde_json::from_slice(&chunks)?)))
-                            }
-                        })
-                });
-                core_ref.run(work)?
+                let work = client
+                    .request(self.request?.into_inner())
+                    .map_err(|e| e.into())
+                    .and_then(|mut res| async move {
+                        let header = res.headers().clone();
+                        let status = res.status().clone();
+                        let chunks = hyper::body::to_bytes(res.body_mut());
+                        let chunks = chunks.await?;
+                        if chunks.is_empty() {
+                            Ok::<(HeaderMap, StatusCode, Option<T>), Error>((header, status, None))
+                        } else {
+                            let val: T = serde_json::from_slice(&chunks)?;
+                            Ok::<(HeaderMap, StatusCode, Option<T>), Error>((
+                                header,
+                                status,
+                                Some(val),
+                            ))
+                        }
+                    });
+                core_ref.block_on(work)
             }
         }
     };
@@ -302,7 +305,7 @@ macro_rules! func_client {
 /// Common imports for every file
 macro_rules! imports {
     () => {
-        use tokio_core::reactor::Core;
+        use tokio::runtime::Runtime;
         #[cfg(feature = "rustls")]
         type HttpsConnector = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
         #[cfg(feature = "rust-native-tls")]
@@ -311,8 +314,7 @@ macro_rules! imports {
         type HttpsConnector = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
         use crate::errors::*;
         use crate::util::url_join;
-        use futures::future::ok;
-        use futures::{Future, Stream};
+        use futures::future::TryFutureExt;
         use hyper::client::Client;
         use hyper::Request;
         use hyper::StatusCode;

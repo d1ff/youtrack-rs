@@ -1,8 +1,7 @@
-use futures::future::ok;
-use futures::{Future, Stream};
-use tokio_core::reactor::Core;
+use tokio::runtime::Runtime;
 
-use hyper::header::{HeaderName, HeaderValue, IF_NONE_MATCH};
+use futures::future::TryFutureExt;
+use hyper::header::{HeaderName, HeaderValue};
 use hyper::StatusCode;
 use hyper::{self, Body, HeaderMap};
 use hyper::{Client, Request};
@@ -27,7 +26,7 @@ use std::rc::Rc;
 pub struct YouTrack {
     uri: String,
     token: String,
-    core: Rc<RefCell<Core>>,
+    core: Rc<RefCell<Runtime>>,
     client: Rc<Client<HttpsConnector>>,
 }
 
@@ -63,11 +62,8 @@ impl YouTrack {
     where
         T: ToString,
     {
-        let core = Core::new()?;
-        #[cfg(feature = "rustls")]
-        let client = Client::builder().build(HttpsConnector::new(4));
-        #[cfg(feature = "rust-native-tls")]
-        let client = Client::builder().build(HttpsConnector::new(4)?);
+        let core = Runtime::new()?;
+        let client = Client::builder().build(HttpsConnector::new());
         Ok(Self {
             uri: uri.to_string(),
             token: token.to_string(),
@@ -107,7 +103,7 @@ impl YouTrack {
     /// program to crash unexpectedly. While you could borrow without the
     /// `Result` being handled it's highly recommended you don't unless you know
     /// there is no other mutable reference to it.
-    pub fn get_core(&self) -> &Rc<RefCell<Core>> {
+    pub fn get_core(&self) -> &Rc<RefCell<Runtime>> {
         &self.core
     }
 

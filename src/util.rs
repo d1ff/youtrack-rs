@@ -1,5 +1,4 @@
 use hyper::http::uri::InvalidUriParts;
-use hyper::http::HttpTryFrom;
 use hyper::Uri;
 
 /// Add an extra subdirectory to the end of the url. This utilizes
@@ -16,6 +15,6 @@ pub fn url_join(url: &Uri, path: &str) -> Result<Uri, InvalidUriParts> {
         curr_path.push('/');
     }
     curr_path.push_str(path);
-    parts.path_and_query = HttpTryFrom::try_from(curr_path.as_str()).ok();
+    parts.path_and_query = curr_path.parse().ok();
     Uri::from_parts(parts)
 }

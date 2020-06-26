@@ -1,6 +1,4 @@
-use tokio::runtime::Runtime;
-
-use futures::future::TryFutureExt;
+use async_trait::async_trait;
 use hyper::header::{HeaderName, HeaderValue};
 use hyper::StatusCode;
 use hyper::{self, Body, HeaderMap};
@@ -21,13 +19,12 @@ use crate::issues;
 use crate::util::url_join;
 
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct YouTrack {
     uri: String,
     token: String,
-    core: Rc<RefCell<Runtime>>,
-    client: Rc<Client<HttpsConnector>>,
+    client: Arc<Client<HttpsConnector>>,
 }
 
 impl Clone for YouTrack {
@@ -35,8 +32,7 @@ impl Clone for YouTrack {
         Self {
             uri: self.uri.clone(),
             token: self.token.clone(),
-            core: Rc::clone(&self.core),
-            client: Rc::clone(&self.client),
+            client: Arc::clone(&self.client),
         }
     }
 }
@@ -48,10 +44,11 @@ new_type!(CustomQuery);
 
 exec!(CustomQuery);
 
+#[async_trait]
 pub trait Executor {
-    fn execute<T>(self) -> Result<(HeaderMap, StatusCode, Option<T>)>
+    async fn execute<T>(self) -> Result<(HeaderMap, StatusCode, Option<T>)>
     where
-        T: DeserializeOwned;
+        T: DeserializeOwned + Send + Sync;
 }
 
 impl YouTrack {
@@ -62,13 +59,11 @@ impl YouTrack {
     where
         T: ToString,
     {
-        let core = Runtime::new()?;
         let client = Client::builder().build(HttpsConnector::new());
         Ok(Self {
             uri: uri.to_string(),
             token: token.to_string(),
-            core: Rc::new(RefCell::new(core)),
-            client: Rc::new(client),
+            client: Arc::new(client),
         })
     }
 
@@ -84,27 +79,6 @@ impl YouTrack {
         T: ToString,
     {
         self.token = token.to_string();
-    }
-
-    /// Exposes the inner event loop for those who need
-    /// access to it. The recommended way to safely access
-    /// the core would be
-    ///
-    /// ```text
-    /// let g = YouTrack::new("API KEY");
-    /// let core = g.get_core();
-    /// // Handle the error here.
-    /// let ref mut core_mut = *core.try_borrow_mut()?;
-    /// // Do stuff with the core here. This prevents a runtime failure by
-    /// // having two mutable borrows to the core at the same time.
-    /// ```
-    ///
-    /// This is how other parts of the API are implemented to avoid causing your
-    /// program to crash unexpectedly. While you could borrow without the
-    /// `Result` being handled it's highly recommended you don't unless you know
-    /// there is no other mutable reference to it.
-    pub fn get_core(&self) -> &Rc<RefCell<Runtime>> {
-        &self.core
     }
 
     /// Begin building up a GET request to YouTrack

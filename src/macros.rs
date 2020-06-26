@@ -10,7 +10,6 @@ macro_rules! from {
             fn from(f: $f<'g>) -> Self {
                 Self {
                     request: f.request,
-                    core: f.core,
                     client: f.client,
                     parameter: None,
                 }
@@ -58,7 +57,6 @@ macro_rules! from {
 
                     Self {
                         request: f.request,
-                        core: f.core,
                         client: f.client,
                         parameter: None,
                     }
@@ -67,7 +65,6 @@ macro_rules! from {
 
                     Self {
                         request: f.request,
-                        core: f.core,
                         client: f.client,
                         parameter: None,
                     }
@@ -98,7 +95,6 @@ macro_rules! from {
 
                     Self {
                         request: f.request,
-                        core: f.core,
                         client: f.client,
                         parameter: None,
                     }
@@ -107,7 +103,6 @@ macro_rules! from {
 
                     Self {
                         request: f.request,
-                        core: f.core,
                         client: f.client,
                         parameter: None,
                     }
@@ -142,7 +137,6 @@ macro_rules! from {
                         }
                         Self {
                             request: Ok(RefCell::new(req)),
-                            core: &yt.core,
                             client: &yt.client,
                             parameter: None,
                         }
@@ -150,7 +144,6 @@ macro_rules! from {
                     Err(err) => {
                         Self {
                             request: Err(err),
-                            core: &yt.core,
                             client: &yt.client,
                             parameter: None,
                         }
@@ -171,8 +164,7 @@ macro_rules! new_type {
         $(
         pub struct $i<'g> {
             pub(crate) request: Result<RefCell<Request<Body>>>,
-            pub(crate) core: &'g Rc<RefCell<Runtime>>,
-            pub(crate) client: &'g Rc<Client<HttpsConnector>>,
+            pub(crate) client: &'g Arc<Client<HttpsConnector>>,
             pub(crate) parameter: Option<String>,
         }
         )*
@@ -184,38 +176,31 @@ macro_rules! new_type {
 /// no extra functions.
 macro_rules! exec {
     ($t: ident) => {
+        #[async_trait]
         impl<'a> Executor for $t<'a> {
             /// Execute the query by sending the built up request to YouTrack.
             /// The value returned is either an error or the Status Code and
             /// Json after it has been deserialized. Please take a look at
             /// the YouTrack documentation to see what value you should receive
             /// back for good or bad requests.
-            fn execute<T>(self) -> Result<(HeaderMap, StatusCode, Option<T>)>
+            async fn execute<T>(self) -> Result<(HeaderMap, StatusCode, Option<T>)>
             where
-                T: DeserializeOwned,
+                T: DeserializeOwned + Send + Sync,
             {
-                let mut core_ref = self.core.try_borrow_mut()?;
                 let client = self.client;
-                let work = client
-                    .request(self.request?.into_inner())
-                    .map_err(|e| e.into())
-                    .and_then(|mut res| async move {
-                        let header = res.headers().clone();
-                        let status = res.status().clone();
-                        let chunks = hyper::body::to_bytes(res.body_mut());
-                        let chunks = chunks.await?;
-                        if chunks.is_empty() {
-                            Ok::<(HeaderMap, StatusCode, Option<T>), Error>((header, status, None))
-                        } else {
-                            let val: T = serde_json::from_slice(&chunks)?;
-                            Ok::<(HeaderMap, StatusCode, Option<T>), Error>((
-                                header,
-                                status,
-                                Some(val),
-                            ))
-                        }
-                    });
-                core_ref.block_on(work)
+                let req = client.request(self.request?.into_inner());
+                let mut res = req.await?;
+
+                let header = res.headers().clone();
+                let status = res.status().clone();
+                let chunks = hyper::body::to_bytes(res.body_mut());
+                let chunks = chunks.await?;
+                if chunks.is_empty() {
+                    Ok::<(HeaderMap, StatusCode, Option<T>), Error>((header, status, None))
+                } else {
+                    let val: T = serde_json::from_slice(&chunks)?;
+                    Ok::<(HeaderMap, StatusCode, Option<T>), Error>((header, status, Some(val)))
+                }
             }
         }
     };
@@ -314,7 +299,7 @@ macro_rules! imports {
         type HttpsConnector = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
         use crate::errors::*;
         use crate::util::url_join;
-        use futures::future::TryFutureExt;
+        use async_trait::async_trait;
         use hyper::client::Client;
         use hyper::Request;
         use hyper::StatusCode;
@@ -322,7 +307,7 @@ macro_rules! imports {
         use serde::de::DeserializeOwned;
         use serde_json;
         use std::cell::RefCell;
-        use std::rc::Rc;
+        use std::sync::Arc;
 
         use $crate::client::Executor;
     };

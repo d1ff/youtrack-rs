@@ -72,6 +72,11 @@ impl YouTrack {
         &self.token
     }
 
+    /// Get the currently set Uri
+    pub fn get_uri(&self) -> &str {
+        &self.uri
+    }
+
     /// Change the currently set Authorization Token using a type that can turn
     /// into an &str. Must be a valid API Token for requests to work.
     pub fn set_token<T>(&mut self, token: T)

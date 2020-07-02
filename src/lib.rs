@@ -15,5 +15,6 @@ mod util;
 pub mod client;
 pub mod errors;
 pub mod issues;
+pub mod users;
 
 pub use hyper::{HeaderMap, StatusCode};

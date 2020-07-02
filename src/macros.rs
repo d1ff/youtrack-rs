@@ -290,7 +290,6 @@ macro_rules! func_client {
 /// Common imports for every file
 macro_rules! imports {
     () => {
-        use tokio::runtime::Runtime;
         #[cfg(feature = "rustls")]
         type HttpsConnector = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
         #[cfg(feature = "rust-native-tls")]

@@ -16,6 +16,7 @@ use serde_json;
 
 use crate::errors::*;
 use crate::issues;
+use crate::users;
 use crate::util::url_join;
 
 use std::cell::RefCell;
@@ -122,6 +123,7 @@ impl YouTrack {
 impl<'g> GetQueryBuilder<'g> {
     func_client!(custom_endpoint, CustomQuery, endpoint_str);
     func_client!(issues, issues::get::Issues<'g>);
+    func_client!(users, users::get::Users<'g>);
 }
 
 impl<'g> PostQueryBuilder<'g> {

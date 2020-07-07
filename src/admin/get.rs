@@ -8,7 +8,7 @@ from!(
     @GetQueryBuilder
         -> Admin = "admin");
 
-use super::custom_fields_settings::get::CustomFieldsSettings;
+use super::custom_field_settings::get::CustomFieldSettings;
 use super::projects::get::Projects;
 
 impl_macro!(
@@ -16,6 +16,6 @@ impl_macro!(
     |=> projects -> Projects
     |
     @Admin
-    |=> custom_fields_settings -> CustomFieldsSettings
+    |=> custom_field_settings -> CustomFieldSettings
     |
 );

@@ -22,10 +22,11 @@ async fn main() {
     let me = yt
         .get()
         .admin()
-        .projects()
+        .custom_fields_settings()
+        .types()
         .top("50")
         .skip("0")
-        .fields("id,shortName,description,template")
+        .fields("id,presentaion,isMultiValue,valueType")
         .execute::<Value>()
         .await
         .unwrap();

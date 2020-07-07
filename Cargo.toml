@@ -1,6 +1,6 @@
 [package]
 name = "youtrack-rs"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Vladislav Bortnikov <bortnikov.vladislav@e-sakha.ru>"]
 edition = "2018"
 description = "Pure Rust bindings to the YouTrack API"
@@ -27,7 +27,7 @@ native-tls = { version = "0.2", optional = true }
 error-chain = "0.12"
 tokio = { version = "0.2", features = ["macros"] }
 futures = "0.3"
-serde = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 async-trait = "0.1"
 structopt = "0.3"

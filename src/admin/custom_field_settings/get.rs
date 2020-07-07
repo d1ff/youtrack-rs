@@ -7,6 +7,7 @@ new_type!(CustomFieldSettings);
 from!(@Admin
         -> CustomFieldSettings = "customFieldSettings");
 
+use super::bundles::get::Bundles;
 use super::custom_field::get::CustomFields;
 use super::types::get::Types;
 
@@ -16,4 +17,7 @@ impl_macro!(
     |
     @CustomFieldSettings
     |=> custom_fields -> CustomFields
+    |
+    @CustomFieldSettings
+    |=> bundles -> Bundles
     |);

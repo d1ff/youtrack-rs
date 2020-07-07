@@ -12,6 +12,7 @@ extern crate error_chain;
 mod macros;
 mod util;
 
+pub mod admin;
 pub mod client;
 pub mod errors;
 pub mod issues;

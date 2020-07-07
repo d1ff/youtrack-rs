@@ -21,9 +21,11 @@ async fn main() {
 
     let me = yt
         .get()
-        .users()
-        .me()
-        .fields("login")
+        .admin()
+        .projects()
+        .top("50")
+        .skip("0")
+        .fields("id,shortName,description,template")
         .execute::<Value>()
         .await
         .unwrap();

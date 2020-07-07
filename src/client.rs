@@ -14,6 +14,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json;
 
+use crate::admin;
 use crate::errors::*;
 use crate::issues;
 use crate::users;
@@ -124,6 +125,7 @@ impl<'g> GetQueryBuilder<'g> {
     func_client!(custom_endpoint, CustomQuery, endpoint_str);
     func_client!(issues, issues::get::Issues<'g>);
     func_client!(users, users::get::Users<'g>);
+    func_client!(admin, admin::get::Admin<'g>);
 }
 
 impl<'g> PostQueryBuilder<'g> {

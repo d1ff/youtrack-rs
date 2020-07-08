@@ -1,6 +1,7 @@
 use youtrack_rs::client::{Executor, YouTrack};
 
-use serde::{Deserialize, Serialize};
+use serde::de::{self, Deserializer, Visitor};
+use serde::{forward_to_deserialize_any, Deserialize, Serialize};
 use serde_json::Value;
 use structopt::StructOpt;
 
@@ -28,7 +29,7 @@ struct CustomField {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct EnumBundle {
+struct Bundle {
     id: String,
 }
 
@@ -38,7 +39,7 @@ struct ProjectCustomField {
     ordinal: i32,
     #[serde(rename = "canBeEmpty")]
     can_be_emtpy: bool,
-    bundle: Option<EnumBundle>,
+    bundle: Option<Bundle>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
